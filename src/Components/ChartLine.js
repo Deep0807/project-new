@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import Chart from "chart.js/auto";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useNavigate } from "react-router-dom";
+
 const LineChart = () => {
   const [data, setData] = useState([]);
   const [detailValue, setDetailsValue] = useState();
-  const [showDetails, setShowDetails] = useState(false); // State to control visibility of detailed values
+  const [showDetails, setShowDetails] = useState(false);
   const [totalPrice, setTotalPrice] = useState(0);
   const [yearlyChange, setYearlyChange] = useState(0);
   const chartRef = useRef(null);
@@ -43,12 +44,7 @@ const LineChart = () => {
         chartInstanceRef.current = new Chart(ctx, {
           type: "line",
           data: {
-            labels: data.map((item) => {
-              const date = new Date(item.date);
-              const month = date.toLocaleString("default", { month: "short" });
-              const year = date.getFullYear();
-              return `${month} ${year}`;
-            }),
+            labels: data.sort((a, b) => new Date(a.date) - new Date(b.date)).map((item) => item.date) ,
             datasets: [
               {
                 label: "",
@@ -76,12 +72,148 @@ const LineChart = () => {
                 beginAtZero: true,
               },
             },
+            onClick: handleChartClick,
           },
         });
       }
     }
   }, [data]);
 
+  const handleChartClick = (event, chartElements) => {
+    if (chartElements.length > 0) {
+      const clickedIndex = chartElements[0].index;
+      const clickedData = data[clickedIndex];
+      openPieChart(clickedData);
+    }
+  };
+
+  // const openPieChart = (clickedData = null) => {
+  //   // Calculate percentage of each data point relative to the total
+  //   const total = data.reduce((acc, curr) => acc + curr.price, 0);
+  //   let percentagesClicked;
+  //   let percentagesRest;
+  
+  //   if (clickedData) {
+  //     // Calculate percentage for clicked item
+  //     const clickedItemTotal = data.find((item) => item.date === clickedData.date).price;
+  //     percentagesClicked = [{ label: clickedData.date, data: (clickedItemTotal / total) * 100 }];
+  
+  //     // Calculate percentage for rest of the data
+  //     const restTotal = total - clickedItemTotal;
+  //     percentagesRest = data.map((item) => ({
+  //       label: item.date,
+  //       data: item.date === clickedData.date ? 0 : (item.price / restTotal) * 100,
+  //     }));
+  //   } else {
+  //     // If no chart element is clicked, show all data in the pie chart
+  //     percentagesClicked = [];
+  //     percentagesRest = data.map((item) => ({
+  //       label: item.date,
+  //       data: (item.price / total) * 100,
+  //     }));
+  //   }
+  //   debugger
+  
+  //   // Combine percentages for clicked item and rest of the data
+  //   const combinedPercentages = [...percentagesClicked, ...percentagesRest];
+  
+  //   // Check if pie chart already exists
+  //   if (chartRef.current && chartRef.current.data) {
+  //     // Update existing pie chart
+  //     chartRef.current.data.labels = combinedPercentages.map((item) => item.label);
+  //     chartRef.current.data.datasets[0].data = combinedPercentages.map((item) => item.data);
+  //     chartRef.current.update();
+  //   } else {
+  //     // Create new pie chart
+  //     const pieChartCanvas = document.createElement("canvas");
+  //     pieChartCanvas.id = "pieChartCanvas";
+  //     document.body.appendChild(pieChartCanvas);
+    
+  //     chartRef.current = new Chart(pieChartCanvas, {
+  //       type: "pie",
+  //       data: {
+  //         labels: combinedPercentages.map((item) => item.label),
+  //         datasets: [
+  //           {
+  //             data: combinedPercentages.map((item) => item.data),
+  //             backgroundColor: [
+  //               "rgba(255, 99, 132, 0.6)",
+  //               "rgba(54, 162, 235, 0.6)",
+  //               "rgba(255, 206, 86, 0.6)",
+  //               "rgba(75, 192, 192, 0.6)",
+  //               "rgba(153, 102, 255, 0.6)",
+  //               "rgba(255, 159, 64, 0.6)",
+  //               // Add more colors if needed
+  //             ],
+  //           },
+  //         ],
+  //       },
+  //       options: {
+  //         responsive: true,
+  //       },
+  //     });
+  //   }
+    
+    
+  // };
+
+  const openPieChart = (clickedData = null) => {
+   
+    const total = data.reduce((acc, curr) => acc + curr.price, 0);
+    let percentagesClicked;
+  
+    if (clickedData) {
+     
+      const clickedItemTotal = data.find((item) => item.date === clickedData.date).price;
+      const clickedItemPercentage = (clickedItemTotal / total) * 100;
+      percentagesClicked = [{ label: clickedData.date, data: clickedItemPercentage }];
+    } else {
+      percentagesClicked = [];
+    }
+
+    const restTotalPercentage = 100 - (percentagesClicked.length ? percentagesClicked[0].data : 0);
+  console.log(restTotalPercentage);
+    const combinedPercentages = [...percentagesClicked, { label: "Rest Data", data: restTotalPercentage }];
+
+    if (chartRef.current && chartRef.current.data) {
+      
+      chartRef.current.data.labels = combinedPercentages.map((item) => item.label);
+      chartRef.current.data.datasets[0].data = combinedPercentages.map((item) => item.data);
+      chartRef.current.update();
+    } else {
+    
+      const pieChartCanvas = document.createElement("canvas");
+      pieChartCanvas.id = "pieChartCanvas";
+      document.body.appendChild(pieChartCanvas);
+  
+      chartRef.current = new Chart(pieChartCanvas, {
+        type: "pie",
+        data: {
+          labels: combinedPercentages.map((item) => item.label),
+          datasets: [
+            {
+              data: combinedPercentages.map((item) => item.data),
+              backgroundColor: [
+                "rgba(255, 99, 132, 0.6)",
+                "rgba(54, 162, 235, 0.6)",
+                "rgba(255, 206, 86, 0.6)",
+                "rgba(75, 192, 192, 0.6)",
+                "rgba(153, 102, 255, 0.6)",
+                "rgba(255, 159, 64, 0.6)",
+                
+              ],
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+        },
+      });
+    }
+  };
+  
+  
+  
   const toggleDetails = () => {
     setShowDetails(!showDetails);
   };
@@ -90,13 +222,14 @@ const LineChart = () => {
     const total = data.reduce((acc, curr) => acc + curr.price, 0);
     setTotalPrice(total);
   };
+
   const handleDelete = () => {
     localStorage.removeItem("rows");
     localStorage.removeItem("details");
-    // setRows([{ price: "", date: "" }]);
     setDetailsValue({ type: "", description: "" });
-    navigate("/graphform")
-  }
+    navigate("/graphform");
+  };
+
   const calculateYearlyChange = (data) => {
     if (data.length < 2) return;
 
